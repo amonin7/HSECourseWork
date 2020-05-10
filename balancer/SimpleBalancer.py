@@ -1,21 +1,50 @@
 import Messages.SimpleMessage as ms
 
+
 class SimpleBalancer:
 
-    def __init__(self, maxDepth, bal_type="slave", is_solved=True, balancers_amount=1):
-        self.maxDepth = maxDepth
-        self.bal_type = bal_type
-        self.is_solved = is_solved
-        self.balancers_amount = balancers_amount
+    def __init__(self, state):
+        self._state = state
 
-    def balance(self, amountOfProblems):
-        if self.bal_type == "slave":
-            return ms.SimpleMessage('b', 's', 'ramify', [-1])
-        elif self.bal_type == "master":
-            if self.is_solved:
-                answer = []
-                for i in range(1, self.balancers_amount):
-                    answer.append(ms.SimpleMessage('b', 'b', 'send', [i, amountOfProblems / self.balancers_amount]))
-                return answer
-            else:
-                return [ms.SimpleMessage('b', 's', 'ramify', [100])]
+    @property
+    def state(self):
+        return self._state
+
+    @state.setter
+    def state(self, value):
+        self._state = value
+
+    def balance(self, max_depth):
+        print("Balancing")
+
+
+class MasterBalancer(SimpleBalancer):
+
+    def __init__(self, state="wait tasks"):
+        super().__init__(state)
+
+    '''
+    :returns status, where to send, how many to send
+    where to send -- either list of proc numbers or -1 (means all others)
+    how many to send -- either list of amounts of tasks to each process to send
+    or -1 (means all tasks should be separated into equal groups and send to all processes)
+    '''
+    def balance(self, max_depth):
+        if self.state == "initial":
+            return "solve", [max_depth / 2]
+        if self.state == "solved":
+            return "send", [[-1], [-1]]
+        if self.state == "sent":
+            return "done", []
+
+
+class SlaveBalancer(SimpleBalancer):
+    def __init__(self, state="wait tasks"):
+        super().__init__(state)
+
+    def balance(self, max_depth):
+        if self.state == "initial":
+            return "solve", [-1]
+        if self.state == "solved":
+            return "done", []
+

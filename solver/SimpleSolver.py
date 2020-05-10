@@ -15,18 +15,22 @@ class SimpleSolver:
         self.testDict = {1: 0}
 
     def getSubproblems(self, amountOfSubProbs):
-        subprobForReturn = self.subProblems[:amountOfSubProbs]
-        for x in subprobForReturn:
-            self.subProblems.remove(x)
-
+        if amountOfSubProbs == -1:
+            subprobForReturn = self.subProblems
+            self.subProblems = []
+        else:
+            subprobForReturn = self.subProblems[:amountOfSubProbs]
+            for x in subprobForReturn:
+                self.subProblems.remove(x)
         return subprobForReturn
 
     def getRecord(self):
         return self.records
 
     def getInfo(self):
-        return len(self.subProblems), self.isRecordUpdated
+        return [len(self.subProblems), self.isRecordUpdated]
 
+    # TODO: подумать нужно ли здесь трай кетч
     def putSubproblems(self, newSubproblems):
         try:
             self.subProblems.extend(newSubproblems)
@@ -37,13 +41,7 @@ class SimpleSolver:
             return 0
 
     def putRecord(self, newRecord):
-        try:
-            self.records = newRecord
-        except Exception:
-            print(Exception)
-            return -1
-        else:
-            return 0
+        self.records = newRecord
 
     # функция выдающая с вероятностью р '1' и 1-р '0'
     # вероятность р = (текущая глубина дерева) / (макс глубину дерева)
@@ -55,8 +53,6 @@ class SimpleSolver:
     # непосредственное ветвление одной вершины
     def ramify(self):
         curSubProblem = self.subProblems.pop()
-
-        # print(self.generateContinueOrNot(curSubProblem))
         if self.generateContinueOrNot(curSubProblem) == 1:
             self.subProblems.append(subprob.SimpleSubProblem(depth=curSubProblem.depth + 1, weight=0, cost=0))
             self.subProblems.append(subprob.SimpleSubProblem(depth=curSubProblem.depth + 1, weight=0, cost=0))
@@ -65,11 +61,10 @@ class SimpleSolver:
             else:
                 self.testDict[curSubProblem.depth + 1] = 2
 
+    # TODO: return info
     # ветвление на эн итераций
     def solve(self, n):
-        if n == 0:
-            return
-        elif n > 0:
+        if n > 0:
             i = 0
             while i < n and len(self.subProblems) != 0:
                 i += 1
@@ -77,6 +72,7 @@ class SimpleSolver:
         elif n == -1:
             while len(self.subProblems) != 0:
                 self.ramify()
+        return "solved", [self.getInfo()[0]]
 
 
 # if __name__ == "__main__":

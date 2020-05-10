@@ -10,12 +10,18 @@ print("Halo, World!")
 #
 # print(sum)
 
-lst = [1, 2, 3, 4, 5]
+# lst = [1, 2, 3, 4, 5]
 
-secondList = lst[:3]
+# secondList = lst[:3]
 
-for x in secondList: lst.remove(x)
+# for x in secondList: lst.remove(x)
 
-print(secondList)
-print(lst)
+balancers_amount = 8
+probs_amnt = 14
+part = 1 / (balancers_amount - 1)
+for i in range(1, balancers_amount):
+    print([int((i - 1) * probs_amnt * part), int(i * probs_amnt * part)])
+
+# print(secondList)
+# print(lst)
 
