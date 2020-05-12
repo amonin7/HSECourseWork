@@ -27,10 +27,13 @@ class SimpleSolver:
     def getRecord(self):
         return self.records
 
+    def compareRecord(self, otherRecord):
+        return self.records > otherRecord
+
     def getInfo(self):
         return [len(self.subProblems), self.isRecordUpdated]
 
-    # TODO: подумать нужно ли здесь трай кетч
+    # TODO: подумать нужно ли здесь трай кетч -- обдумал - нужен
     def putSubproblems(self, newSubproblems):
         try:
             self.subProblems.extend(newSubproblems)
@@ -61,7 +64,7 @@ class SimpleSolver:
             else:
                 self.testDict[curSubProblem.depth + 1] = 2
 
-    # TODO: return info
+    # TODO: return info -- fixed
     # ветвление на эн итераций
     def solve(self, n):
         if n > 0:
@@ -69,10 +72,14 @@ class SimpleSolver:
             while i < n and len(self.subProblems) != 0:
                 i += 1
                 self.ramify()
+            self.records = i
+            self.isRecordUpdated = True
         elif n == -1:
+            self.isRecordUpdated = True
             while len(self.subProblems) != 0:
+                self.records += 1
                 self.ramify()
-        return "solved", [self.getInfo()[0]]
+        return "solved", self.getInfo()
 
 
 # if __name__ == "__main__":
