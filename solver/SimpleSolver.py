@@ -7,12 +7,14 @@ class SimpleSolver:
     # def __init__(self):
     #     pass
 
-    def __init__(self, subProblems, records, isRecordUpdated, maxDepth):
+    def __init__(self, subProblems, records, isRecordUpdated, maxDepth, prc_put=0.0, prc_slv=1.0):
         self.subProblems = subProblems
         self.records = records
         self.isRecordUpdated = isRecordUpdated
         self.maxDepth = maxDepth
         self.testDict = {1: 0}
+        self.prc_put = prc_put
+        self.prc_slv = prc_slv
 
     def getSubproblems(self, amountOfSubProbs):
         if amountOfSubProbs == -1:
@@ -41,7 +43,8 @@ class SimpleSolver:
             print(Exception)
             return -1
         else:
-            return 0
+            time = len(newSubproblems) * self.prc_put
+            return time
 
     def putRecord(self, newRecord):
         self.records = newRecord
@@ -67,19 +70,22 @@ class SimpleSolver:
     # TODO: return info -- fixed
     # ветвление на эн итераций
     def solve(self, n):
+        time = 0.0
         if n > 0:
             i = 0
             while i < n and len(self.subProblems) != 0:
                 i += 1
                 self.ramify()
             self.records = i
+            time = i * self.prc_slv
             self.isRecordUpdated = True
         elif n == -1:
             self.isRecordUpdated = True
             while len(self.subProblems) != 0:
                 self.records += 1
                 self.ramify()
-        return "solved", self.getInfo()
+                time += self.prc_slv
+        return "solved", self.getInfo(), time
 
 
 # if __name__ == "__main__":
