@@ -1,12 +1,10 @@
-import Messages.SimpleMessage as ms
-
-
 class SimpleBalancer:
 
-    def __init__(self, state, max_depth, prc_blnc=0):
+    def __init__(self, state, max_depth, proc_am, prc_blnc=0):
         self._state = state
         self.max_depth = max_depth
         self.prc_blnc = prc_blnc
+        self.proc_am = proc_am
 
     @property
     def state(self):
@@ -22,8 +20,8 @@ class SimpleBalancer:
 
 class MasterBalancer(SimpleBalancer):
 
-    def __init__(self, state, max_depth, prc_blnc):
-        super().__init__(state, max_depth, prc_blnc)
+    def __init__(self, state, max_depth, proc_am, prc_blnc):
+        super().__init__(state, max_depth, proc_am, prc_blnc)
 
     '''
     :returns status, where to send, how many to send
@@ -34,7 +32,7 @@ class MasterBalancer(SimpleBalancer):
     def balance(self, state):
         self.state = state
         if self.state == "starting":
-            return "solve", [self.max_depth], self.prc_blnc
+            return "solve", [self.proc_am], self.prc_blnc
         if self.state == "solved":
             return "send", [[-1], [-1]], self.prc_blnc
         if self.state == "sent":
@@ -42,8 +40,8 @@ class MasterBalancer(SimpleBalancer):
 
 
 class SlaveBalancer(SimpleBalancer):
-    def __init__(self, state, max_depth, prc_blnc):
-        super().__init__(state, max_depth, prc_blnc)
+    def __init__(self, state, max_depth, proc_am, prc_blnc):
+        super().__init__(state, max_depth, proc_am, prc_blnc)
 
     def balance(self, state):
         self.state = state
@@ -51,4 +49,3 @@ class SlaveBalancer(SimpleBalancer):
             return "solve", [-1], self.prc_blnc
         if self.state == "solved":
             return "stop", [], self.prc_blnc
-

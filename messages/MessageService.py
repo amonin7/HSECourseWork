@@ -6,8 +6,6 @@ class MessageService:
     def __init__(self):
         self.message_queue = defaultdict(list)
 
-    # TODO: messages -> message -- fixed
-
     def putMessage(self, receiver, message):
         self.message_queue[receiver].append(message)
 
