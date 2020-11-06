@@ -35,7 +35,6 @@ class SimpleSolver:
     def getInfo(self):
         return [len(self.subProblems), self.isRecordUpdated]
 
-    # TODO: подумать нужно ли здесь трай кетч -- обдумал - нужен
     def putSubproblems(self, newSubproblems):
         try:
             self.subProblems.extend(newSubproblems)
@@ -67,7 +66,6 @@ class SimpleSolver:
             else:
                 self.testDict[curSubProblem.depth + 1] = 2
 
-    # TODO: return info -- fixed
     # ветвление на эн итераций
     def solve(self, n):
         time = 0.0
