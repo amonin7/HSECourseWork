@@ -41,10 +41,10 @@ class Engine:
                                    proc_am=self.processes_amount,
                                    prc_blnc=self.price_blc)
         self.balancers = [master]
-        self.solvers = [slv.SimpleSolver(subProblems=[sp.SimpleSubProblem(0, 0, 0)],
+        self.solvers = [slv.SimpleSolver(subproblems=[sp.SimpleSubProblem(0, 0, 0)],
                                          records=0,
-                                         isRecordUpdated=False,
-                                         maxDepth=self.max_depth,
+                                         is_record_updated=False,
+                                         max_depth=self.max_depth,
                                          prc_put=self.price_put,
                                          prc_slv=self.price_slv)]
         self.communicators = [com.SimpleCommunicator("ready",
@@ -61,7 +61,7 @@ class Engine:
                                      prc_blnc=self.price_blc)
             self.balancers.append(slave)
 
-            solver = slv.SimpleSolver(subProblems=[], records=0, isRecordUpdated=False, maxDepth=self.max_depth,
+            solver = slv.SimpleSolver(subproblems=[], records=0, is_record_updated=False, max_depth=self.max_depth,
                                       prc_put=self.price_put, prc_slv=self.price_slv)
             self.solvers.append(solver)
 
@@ -72,18 +72,18 @@ class Engine:
             
     def run(self):
         self.initializeAll()
-        # command = "start"
         outputs = []
         optimal_value = 0
+        proc_ind = 0
+        command = "start"
         while True:
             try:
-                proc_ind = self.isDoneStatuses.index(False)
-                command = self.balancers[proc_ind].state
-
                 while command != "stop":
                     if command == "start":
                         state = "starting"
                         command, outputs = self.start(proc_id=proc_ind, state=state)
+                    # elif command == "receive":
+                    #
                     elif command == "solve":
                         tasks_am = outputs[0]
                         state, outputs, command = self.solve(proc_id=proc_ind, tasks_amount=tasks_am)
@@ -93,11 +93,15 @@ class Engine:
                     elif command == "send":
                         state = "sending"
                         command, outputs = self.send(proc_id=proc_ind, messages_to_send=outputs)
+                    elif command == "continue":
+                        break
 
                     self.isDoneStatuses[proc_ind] = (command == "stop")
 
                 if command == "stop" and self.solvers[proc_ind].compareRecord(optimal_value):
                     optimal_value = self.solvers[proc_ind].getRecord()
+                proc_ind = (self.isDoneStatuses.index(False) + 1) % self.processes_amount
+                command = self.balancers[proc_ind].state
 
             except Exception as e:
                 # print(e)
@@ -107,6 +111,11 @@ class Engine:
         return self.timers
 
     def start(self, proc_id, state):
+        self.receive_messages(proc_id=proc_id)
+        command, outputs = self.balance(proc_id, state)
+        return command, outputs
+
+    def receive_messages(self, proc_id):
         command, messages, time_for_rcv = self.communicators[proc_id].receive(proc_id, self.mes_service)
         if command == "put messages":
             for [probs, record, sending_time] in messages:
@@ -144,9 +153,6 @@ class Engine:
                                                    'Put probs into queue',
                                                    'Probs length=' + str(len(probs)))
                         self.timers[proc_id] += time
-
-        command, outputs = self.balance(proc_id, state)
-        return command, outputs
 
     def solve(self, proc_id, tasks_amount):
         state, outputs, time = self.solvers[proc_id].solve(tasks_amount)
@@ -190,6 +196,21 @@ class Engine:
                     state, outputs, time = self.communicators[proc_id].send(dest_proc, message, self.mes_service)
                     is_sent = is_sent and (state == 'sent')
                     self.save_time(proc_id=proc_id, timestamp=time, message=message, dest_proc=dest_proc)
+            elif len(messages_to_send[1]) == 1:
+                send_amount = messages_to_send[1][0]
+                for dest_proc in range(1, self.processes_amount):
+                    probs_to_send = self.solvers[proc_id].getSubproblems(send_amount)
+                    if len(probs_to_send) == 0 and dest_proc == 1:
+                        raise Exception('There is nothing to send')
+                    elif len(probs_to_send) == 0:
+                        break
+                    else:
+                        message = [probs_to_send, self.solvers[proc_id].getRecord(), self.timers[proc_id]]
+                        state, outputs, time = self.communicators[proc_id].send(dest_proc, message, self.mes_service)
+                        is_sent = is_sent and (state == 'sent')
+                        self.save_time(proc_id=proc_id, timestamp=time, message=message, dest_proc=dest_proc)
+            elif len(messages_to_send[1]) != 1:
+                raise Exception('Unexpected arguments are passes to send function')
         elif len(messages_to_send[1]) == len(messages_to_send[0]):
             probs = self.solvers[proc_id].getSubproblems(np.sum(messages_to_send[1]))
             for com_id in messages_to_send[0]:

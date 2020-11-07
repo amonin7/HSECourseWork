@@ -1,7 +1,5 @@
 class SimpleCommunicator:
 
-    # TODO: communicator knows his id -- fixed
-
     def __init__(self, state, proc_id, proc_am, prc_snd=0, prc_rcv=0):
         self._state = state
         self.proc_id = proc_id
