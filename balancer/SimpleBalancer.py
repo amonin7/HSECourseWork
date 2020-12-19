@@ -1,20 +1,51 @@
-import Messages.SimpleMessage as ms
-
 class SimpleBalancer:
 
-    def __init__(self, maxDepth, bal_type="slave"):
-        self.maxDepth = maxDepth
-        self.bal_type = bal_type
+    def __init__(self, state, max_depth, proc_am, prc_blnc=0):
+        self._state = state
+        self.max_depth = max_depth
+        self.prc_blnc = prc_blnc
+        self.proc_am = proc_am
 
-    def balance(self):
-        if self.bal_type == "slave":
-            return ms.SimpleMessage('b', 's', 'ramify', [-1])
-        if self.bal_type == "slave":
-            return ms.SimpleMessage('b', 'b', 'balance', [])
+    @property
+    def state(self):
+        return self._state
 
+    @state.setter
+    def state(self, value):
+        self._state = value
+
+    def balance(self, state):
+        print("Balancing")
+
+
+class MasterBalancer(SimpleBalancer):
+
+    def __init__(self, state, max_depth, proc_am, prc_blnc):
+        super().__init__(state, max_depth, proc_am, prc_blnc)
 
     '''
-        TODO:
-        MASTER BALANCER AND SLAVE BALANCER IN ONE CLASS
+    :returns status, where to send, how many to send
+    where to send -- either list of proc numbers or -1 (means all others)
+    how many to send -- either list of amounts of tasks to each process to send
+    or -1 (means all tasks should be separated into equal groups and send to all processes)
     '''
+    def balance(self, state):
+        self.state = state
+        if self.state == "starting":
+            return "solve", [self.proc_am], self.prc_blnc
+        if self.state == "solved":
+            return "send", [[-1], [-1]], self.prc_blnc
+        if self.state == "sent":
+            return "stop", [], self.prc_blnc
 
+
+class SlaveBalancer(SimpleBalancer):
+    def __init__(self, state, max_depth, proc_am, prc_blnc):
+        super().__init__(state, max_depth, proc_am, prc_blnc)
+
+    def balance(self, state):
+        self.state = state
+        if self.state == "starting":
+            return "solve", [-1], self.prc_blnc
+        if self.state == "solved":
+            return "stop", [], self.prc_blnc
