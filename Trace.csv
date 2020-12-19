@@ -1,10 +1,26 @@
-,timestamp0,state0,args0,timestamp1,state1,args1,timestamp2,state2,args2,timestamp3,state3,args3,timestamp4,state4,args4
-0,0,init,-,0,init,-,0,init,-,0,init,-,0,init,-
-1,0.0-1.0,Balance,state=starting,0.0-52.0,Await for receive,-,0.0-52.01,Await for receive,-,0.0-52.02,Await for receive,-,0.0-52.03,Await for receive,-
-2,1.0-51.0,Solve,tasks_am=5,52.0-52.01,Receive,"Probs length=0, record=5",52.01-52.02,Receive,"Probs length=1, record=5",52.02-52.03,Receive,"Probs length=0, record=5",52.03-52.04,Receive,"Probs length=1, record=5"
-3,51.0-52.0,Balance,state=solved,52.01-53.01,Balance,state=starting,52.02-53.02,Balance,state=starting,52.03-53.03,Balance,state=starting,52.04-53.04,Balance,state=starting
-4,52.0-52.01,Send,"dest=1,mess_len=3",53.01-53.01,Solve,tasks_am=-1,53.02-30823.02,Solve,tasks_am=-1,53.03-53.03,Solve,tasks_am=-1,53.04-16723.04,Solve,tasks_am=-1
-5,52.01-52.02,Send,"dest=2,mess_len=3",53.01-54.01,Balance,state=solved,30823.02-30824.02,Balance,state=solved,53.03-54.03,Balance,state=solved,16723.04-16724.04,Balance,state=solved
-6,52.02-52.03,Send,"dest=3,mess_len=3",,,,,,,,,,,,
-7,52.03-52.04,Send,"dest=4,mess_len=3",,,,,,,,,,,,
-8,52.04-53.04,Balance,state=sent,,,,,,,,,,,,
+,timestamp0,state0,args0,timestamp1,state1,args1,timestamp2,state2,args2
+0,0,init,-,0,init,-,0,init,-
+1,0.0-1.0,Balance,state=starting,0.0-1.0,Balance,state=starting,0.0-1.0,Balance,state=starting
+2,1.0-61.0,Solve,tasks_am=6,1.0-2.0,Balance,state=nothing_to_receive,1.0-2.0,Balance,state=nothing_to_receive
+3,61.0-62.0,Balance,state=solved,2.0-2.01,Send,dest=0,2.0-2.01,Send,dest=0
+4,62.0-62.01,Receive,get_request,2.01-3.01,Balance,state=sent_get_request,2.01-3.01,Balance,state=sent_get_request
+5,62.01-63.01,Balance,state=received_get_request,3.01-63.01,Await for receive,-,3.01-4.01,Balance,state=nothing_to_receive
+6,63.01-63.02,Send,dest=1,63.01-63.02,Receive,subproblems,4.01-4.02,Send,dest=0
+7,63.02-64.02,Balance,state=sent_subs,63.02-64.02,Balance,state=received_put_subs_and_rec,4.02-5.02,Balance,state=sent_get_request
+8,64.02-64.03,Receive,get_request,64.02-134.02,Solve,tasks_am=-1,5.02-65.03,Await for receive,-
+9,64.03-65.03,Balance,state=received_get_request,134.02-135.02,Balance,state=solved,65.03-65.04,Receive,subproblems
+10,65.03-65.04,Send,dest=2,135.02-136.02,Balance,state=nothing_to_receive,65.04-66.04,Balance,state=received_put_subs_and_rec
+11,65.04-66.04,Balance,state=sent_subs,136.02-136.03,Send,dest=0,66.04-96.04,Solve,tasks_am=-1
+12,66.04-66.05,Receive,get_request,136.03-137.03,Balance,state=sent_get_request,96.04-97.04,Balance,state=solved
+13,66.05-67.05,Balance,state=received_get_request,137.03-138.03,Balance,state=nothing_to_receive,97.04-97.05,Receive,subproblems
+14,67.05-67.06,Send,dest=2,138.03-138.04,Send,dest=0,97.05-98.05,Balance,state=received_put_subs_and_rec
+15,67.06-68.06,Balance,state=sent_subs,138.04-139.04,Balance,state=sent_get_request,98.05-168.05,Solve,tasks_am=-1
+16,68.06-136.02,Await for receive,-,139.04-139.05,Receive,exit_command,168.05-169.05,Balance,state=solved
+17,136.02-136.03,Receive,get_request,,,,169.05-170.05,Balance,state=nothing_to_receive
+18,136.03-137.03,Balance,state=received_get_request,,,,170.05-170.06,Send,dest=0
+19,137.03-137.04,Send,dest=0,,,,170.06-171.06,Balance,state=sent_get_request
+20,137.04-138.04,Balance,state=sent_exit,,,,171.06-172.06,Balance,state=nothing_to_receive
+21,138.04-138.05,Receive,get_request,,,,172.06-172.07,Send,dest=0
+22,138.05-139.05,Balance,state=received_get_request,,,,,,
+23,139.05-139.06,Send,dest=0,,,,,,
+24,139.06-140.06,Balance,state=sent_exit,,,,,,

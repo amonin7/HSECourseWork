@@ -14,7 +14,7 @@ class SimpleBalancer:
     def state(self, value):
         self._state = value
 
-    def balance(self, state):
+    def balance(self, state, subs_amount, add_args=None):
         print("Balancing")
 
 
@@ -29,7 +29,7 @@ class MasterBalancer(SimpleBalancer):
     how many to send -- either list of amounts of tasks to each process to send
     or -1 (means all tasks should be separated into equal groups and send to all processes)
     '''
-    def balance(self, state):
+    def balance(self, state, subs_amount, add_args=None):
         self.state = state
         if self.state == "starting":
             return "solve", [self.proc_am], self.prc_blnc
@@ -43,7 +43,7 @@ class SlaveBalancer(SimpleBalancer):
     def __init__(self, state, max_depth, proc_am, prc_blnc):
         super().__init__(state, max_depth, proc_am, prc_blnc)
 
-    def balance(self, state):
+    def balance(self, state, subs_amount, add_args=None):
         self.state = state
         if self.state == "starting":
             return "solve", [-1], self.prc_blnc

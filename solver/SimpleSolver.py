@@ -29,6 +29,9 @@ class SimpleSolver:
     def compareRecord(self, otherRecord):
         return self.records > otherRecord
 
+    def get_sub_amount(self):
+        return len(self.subproblems)
+
     def getInfo(self):
         return [len(self.subproblems), self.is_record_updated]
 
@@ -49,8 +52,8 @@ class SimpleSolver:
     # вероятность р = (текущая глубина дерева) / (макс глубину дерева)
     def generateContinueOrNot(self, subProblem):
         return random.choices([0, 1],
-                              weights=[ float(subProblem.depth) / float(self.max_depth),
-                                        1 - float(subProblem.depth) / float(self.max_depth)])[0]
+                              weights=[float(subProblem.depth) / float(self.max_depth),
+                                       1 - float(subProblem.depth) / float(self.max_depth)])[0]
 
     # непосредственное ветвление одной вершины
     def ramify(self):
@@ -81,15 +84,3 @@ class SimpleSolver:
                 self.ramify()
                 time += self.prc_slv
         return "solved", self.getInfo(), time
-
-
-# if __name__ == "__main__":
-#     solver = SimpleSolver(subproblems=[subprob.SimpleSubProblem(0, 0, 0)],
-#                           records=[],
-#                           is_record_updated=False,
-#                           max_depth=20)
-#
-#     solver.solve(2048)
-#
-#     print(solver.testDict)
-

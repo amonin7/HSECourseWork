@@ -17,13 +17,24 @@ class SimpleCommunicator:
 
     def send(self, receiver, message, ms):
         time = self.prc_snd
-        ms.putMessage(receiver, message)
+        ms.put_message(receiver, message)
         return "sent", [], time
 
     def receive(self, receiver, ms):
-        message = ms.getMessage(receiver)
+        message = ms.get_messages(receiver)
         time = len(message) * self.prc_rcv
         if len(message) != 0:
-            return "put messages", message, time
+            return "put_messages", message, time
         else:
             return "continue", [], time
+
+    def receive_one(self, receiver, ms):
+        message = ms.get_one_message(receiver)
+        time = self.prc_rcv
+        if message is not None:
+            return "put_message", message, time
+        else:
+            return "continue", None, time
+
+    def get_mes_amount(self, receiver: int, ms) -> int:
+        return ms.get_mes_amount(receiver=receiver)

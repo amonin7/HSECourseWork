@@ -1,8 +1,10 @@
-import balancer.SimpleBalancer as sb
+import balancer.SecondBalancer as sb
+# import balancer.SimpleBalancer as sb
 import subproblems.SimpleSubproblem as sp
 import solver.SimpleSolver as slv
 import communicator.SimpleCommunicator as com
 import messages.MessageService as ms
+import messages.SimpleMessage as sm
 import numpy as np
 import route.RouteCollector as rc
 
@@ -35,11 +37,13 @@ class Engine:
         self.timers = []
         self.downtime = []  # amount of time when process was without any tasks
         self.isDoneStatuses = []
+        self.state = []
 
     def initializeAll(self) -> None:
         master = sb.MasterBalancer("start", max_depth=self.max_depth,
                                    proc_am=self.processes_amount,
-                                   prc_blnc=self.price_blc)
+                                   prc_blnc=self.price_blc,
+                                   alive_proc_am=self.processes_amount - 1)
         self.balancers = [master]
         self.solvers = [slv.SimpleSolver(subproblems=[sp.SimpleSubProblem(0, 0, 0)],
                                          records=0,
@@ -55,6 +59,7 @@ class Engine:
         self.timers = [0.0] * self.processes_amount
         self.downtime = [0.0] * self.processes_amount
         self.isDoneStatuses = [False] * self.processes_amount
+        self.state = ["starting"] * self.processes_amount
 
         for i in range(1, self.processes_amount):
             slave = sb.SlaveBalancer("start", max_depth=self.max_depth, proc_am=self.processes_amount,
@@ -69,95 +74,99 @@ class Engine:
                                                   prc_rcv=self.price_rcv,
                                                   prc_snd=self.price_snd)
             self.communicators.append(communicator)
-            
-    def run(self):
+
+    def run(self) -> None:
         self.initializeAll()
-        outputs = []
-        optimal_value = 0
         proc_ind = 0
-        command = "start"
-        while True:
-            try:
-                while command != "stop":
-                    if command == "start":
-                        state = "starting"
-                        command, outputs = self.start(proc_id=proc_ind, state=state)
-                    # elif command == "receive":
-                    #
+        while not self.isDoneStatuses[0]:
+            state = self.state[proc_ind]
+            command, outputs = self.balance(proc_ind,
+                                            state=state,
+                                            subs_amount=self.solvers[proc_ind].get_sub_amount())
+            if command == "start" or command == "receive":
+                receive_status, outputs = self.receive_message(proc_id=proc_ind)
+                if receive_status != "received_exit_command":
+                    command, outputs = self.balance(proc_ind,
+                                                    state=receive_status,
+                                                    subs_amount=self.solvers[proc_ind].get_sub_amount(),
+                                                    add_args=outputs)
+                    if command == "send_subs":
+                        self.state[proc_ind] = self.send_subs(proc_id=proc_ind, subs_am=outputs[1], dest_id=outputs[0])
+                    elif command == "send_get_request":
+                        self.state[proc_ind] = self.send_get_request(dest_proc_id=outputs[0],
+                                                                     sender_proc_id=proc_ind,
+                                                                     tasks_amount=outputs[1])
+                    elif command == "send_exit":
+                        self.state[proc_ind] = self.send_exit(proc_id=proc_ind, dest_id=outputs[0])
                     elif command == "solve":
                         tasks_am = outputs[0]
-                        state, outputs, command = self.solve(proc_id=proc_ind, tasks_amount=tasks_am)
-                    elif command == "balance":
-                        state = "solved"
-                        command, outputs = self.balance(proc_id=proc_ind, state=state)
-                    elif command == "send":
-                        state = "sending"
-                        command, outputs = self.send(proc_id=proc_ind, messages_to_send=outputs)
-                    elif command == "continue":
-                        break
-
-                    self.isDoneStatuses[proc_ind] = (command == "stop")
-
-                if command == "stop" and self.solvers[proc_ind].compareRecord(optimal_value):
-                    optimal_value = self.solvers[proc_ind].getRecord()
-                proc_ind = (self.isDoneStatuses.index(False) + 1) % self.processes_amount
-                command = self.balancers[proc_ind].state
-
-            except Exception as e:
-                # print(e)
+                        self.state[proc_ind] = self.solve(proc_id=proc_ind, tasks_amount=tasks_am)
+                else:
+                    self.isDoneStatuses[proc_ind] = True
+            elif command == "solve":
+                tasks_am = outputs[0]
+                state = self.solve(proc_id=proc_ind, tasks_amount=tasks_am)
+                self.state[proc_ind] = state
+            elif command == "exit":
+                self.isDoneStatuses[proc_ind] = True
                 break
 
+            # TODO: добавить в метод balance параметром состояние солвера (эм_таскс + рекорд)
+
+            # TODO: comp record
+            # if command == "stop" and self.solvers[proc_ind].compareRecord(optimal_value):
+            #     optimal_value = self.solvers[proc_ind].getRecord()
+            proc_ind = (proc_ind + 1) % self.processes_amount
+            while self.isDoneStatuses[proc_ind]:
+                proc_ind = (proc_ind + 1) % self.processes_amount
+
         self.route_collector.save()
-        return self.timers
 
     def start(self, proc_id, state):
-        self.receive_messages(proc_id=proc_id)
-        command, outputs = self.balance(proc_id, state)
+        rcv_output = self.receive_message(proc_id=proc_id)
+        command, outputs = self.balance(proc_id, state, subs_amount=self.solvers[proc_id].get_sub_amount())
         return command, outputs
 
-    def receive_messages(self, proc_id):
-        command, messages, time_for_rcv = self.communicators[proc_id].receive(proc_id, self.mes_service)
-        if command == "put messages":
-            for [probs, record, sending_time] in messages:
+    def receive_message(self, proc_id):
+        command, message, time_for_rcv = self.communicators[proc_id].receive_one(proc_id, self.mes_service)
+        if command == "put_message":
+            if self.timers[proc_id] < message.timestamp:
+                self.route_collector.write(proc_id,
+                                           str(round(self.timers[proc_id], 3)) + '-' + str(
+                                               round(message.timestamp, 3)),
+                                           'Await for receive',
+                                           '-')
+                self.route_collector.write(proc_id,
+                                           str(round(message.timestamp, 3)) + '-' + str(
+                                               round(message.timestamp + time_for_rcv, 3)),
+                                           'Receive',
+                                           message.mes_type)
+                self.downtime[proc_id] += message.timestamp - self.timers[proc_id]
+                self.timers[proc_id] = message.timestamp + time_for_rcv
+            else:
+                self.route_collector.write(proc_id,
+                                           str(round(self.timers[proc_id], 3)) + '-' + str(
+                                               round(self.timers[proc_id] + time_for_rcv, 3)),
+                                           'Receive',
+                                           message.mes_type)
+                self.timers[proc_id] += time_for_rcv
 
-                if self.timers[proc_id] < sending_time:
-                    self.route_collector.write(proc_id,
-                                               str(round(self.timers[proc_id], 3)) + '-' + str(
-                                                   round(sending_time, 3)),
-                                               'Await for receive',
-                                               '-')
-                    self.route_collector.write(proc_id,
-                                               str(round(sending_time, 3)) + '-' + str(
-                                                   round(sending_time + time_for_rcv, 3)),
-                                               'Receive',
-                                               'Probs length=' + str(len(probs)) + ', record=' + str(record))
-                    self.downtime[proc_id] += sending_time - self.timers[proc_id]
-                    self.timers[proc_id] = sending_time + time_for_rcv
-                else:
-                    self.route_collector.write(proc_id,
-                                               str(round(self.timers[proc_id], 3)) + '-' + str(
-                                                   round(self.timers[proc_id] + time_for_rcv, 3)),
-                                               'Receive',
-                                               'Probs length=' + str(len(probs)) + ', record=' + str(record))
-                    self.timers[proc_id] += time_for_rcv
+            if message.mes_type == "get_request":
+                return "received_get_request", [message.payload, message.sender]
+            elif message.mes_type == "subproblems":
+                self.solvers[proc_id].putSubproblems(message.payload)
+                return "received_put_subs_and_rec", []
+            elif message.mes_type == "exit_command":
+                return "received_exit_command", []
 
-                self.solvers[proc_id].putSubproblems(probs)
-                if self.solvers[proc_id].compareRecord(record):
-                    time = self.solvers[proc_id].putRecord(record)
-                    if time == -1:
-                        raise Exception("Putting problems went wrong")
-                    else:
-                        self.route_collector.write(proc_id,
-                                                   str(round(self.timers[proc_id], 3)) + '-' + str(
-                                                       round(self.timers[proc_id] + time, 3)),
-                                                   'Put probs into queue',
-                                                   'Probs length=' + str(len(probs)))
-                        self.timers[proc_id] += time
+            return "received", []
+        elif command == "continue":
+            return "nothing_to_receive", []
 
     def solve(self, proc_id, tasks_amount):
-        state, outputs, time = self.solvers[proc_id].solve(tasks_amount)
+        state, _, time = self.solvers[proc_id].solve(tasks_amount)
         if state == "solved":
-            command = "balance"
+            # command = "balance"
             self.route_collector.write(proc_id,
                                        str(round(self.timers[proc_id], 3)) + '-' + str(
                                            round(self.timers[proc_id] + time, 3)),
@@ -166,10 +175,12 @@ class Engine:
             self.timers[proc_id] += time
         else:
             raise Exception('Solving went wrong')
-        return state, outputs, command
+        return state
 
-    def balance(self, proc_id, state):
-        command, outputs, time = self.balancers[proc_id].balance(state=state)
+    def balance(self, proc_id, state, subs_amount, add_args=None):
+        command, outputs, time = self.balancers[proc_id].balance(state=state,
+                                                                 subs_amount=subs_amount,
+                                                                 add_args=add_args)
         self.route_collector.write(proc_id,
                                    str(round(self.timers[proc_id], 3)) + '-' + str(
                                        round(self.timers[proc_id] + time, 3)),
@@ -178,61 +189,145 @@ class Engine:
         self.timers[proc_id] += time
         return command, outputs
 
+    def send_get_request(self, dest_proc_id, sender_proc_id, tasks_amount):
+        state, _, time = self.communicators[sender_proc_id].send(
+            receiver=dest_proc_id,
+            message=sm.Message2(sender=sender_proc_id,
+                                dest=dest_proc_id,
+                                mes_type="get_request",
+                                payload=tasks_amount,
+                                timestamp=self.timers[sender_proc_id]),
+            ms=self.mes_service
+        )
+        if state != "sent":
+            raise Exception('Sending went wrong')
+        self.save_time(proc_id=sender_proc_id, timestamp=time, dest_proc=dest_proc_id)
+        # command, outputs = self.balance(sender_proc_id, state)
+        return "sent_get_request"
+
+    def send_subs(self, proc_id, subs_am, dest_id):
+        message = sm.Message2(sender=proc_id,
+                              dest=dest_id,
+                              mes_type="subproblems",
+                              payload=self.solvers[proc_id].getSubproblems(subs_am),
+                              timestamp=self.timers[proc_id])
+        state, outputs, time = self.communicators[proc_id].send(
+            receiver=dest_id,
+            message=message,
+            ms=self.mes_service
+        )
+        if state != "sent":
+            raise Exception('Sending went wrong')
+        self.save_time(proc_id=proc_id, timestamp=time, dest_proc=dest_id)
+        return "sent_subs"
+
+    def send_exit(self, proc_id, dest_id):
+        state, _, time = self.communicators[proc_id].send(
+            receiver=dest_id,
+            message=sm.Message2(sender=proc_id,
+                                dest=dest_id,
+                                mes_type="exit_command",
+                                payload=None,
+                                timestamp=self.timers[proc_id]),
+            ms=self.mes_service
+        )
+        if state != "sent":
+            raise Exception('Sending went wrong')
+        self.save_time(proc_id=proc_id, timestamp=time, dest_proc=proc_id)
+        return "sent_exit"
+
     def send(self, proc_id, messages_to_send):
         is_sent = True
         """
-        outputs[0] -- is the list of numbers of processes, where we will send subprobs
+        outputs[0] -- is the list of numbers of processes, where we will send subproblems
 
         outputs[1] -- is the list of amounts of subproblems, which we will send to other processes
         """
-        if len(messages_to_send[0]) >= 1 and messages_to_send[0][0] == -1:
-            if len(messages_to_send[1]) >= 1 and messages_to_send[1][0] == -1:
-                probs = self.solvers[proc_id].getSubproblems(-1)
-                probs_amnt = len(probs)
-                part = 1 / (self.processes_amount - 1)
-                for dest_proc in range(1, self.processes_amount):
-                    message = [probs[int((dest_proc - 1) * probs_amnt * part): int(dest_proc * probs_amnt * part)],
-                               self.solvers[proc_id].getRecord(), self.timers[proc_id]]
-                    state, outputs, time = self.communicators[proc_id].send(dest_proc, message, self.mes_service)
-                    is_sent = is_sent and (state == 'sent')
-                    self.save_time(proc_id=proc_id, timestamp=time, message=message, dest_proc=dest_proc)
-            elif len(messages_to_send[1]) == 1:
-                send_amount = messages_to_send[1][0]
-                for dest_proc in range(1, self.processes_amount):
-                    probs_to_send = self.solvers[proc_id].getSubproblems(send_amount)
-                    if len(probs_to_send) == 0 and dest_proc == 1:
-                        raise Exception('There is nothing to send')
-                    elif len(probs_to_send) == 0:
-                        break
-                    else:
-                        message = [probs_to_send, self.solvers[proc_id].getRecord(), self.timers[proc_id]]
-                        state, outputs, time = self.communicators[proc_id].send(dest_proc, message, self.mes_service)
+        if len(messages_to_send) == 2:
+            if len(messages_to_send[0]) >= 1 and messages_to_send[0][0] == -1:
+                if len(messages_to_send[1]) >= 1 and messages_to_send[1][0] == -1:
+                    probs = self.solvers[proc_id].getSubproblems(-1)
+                    probs_amnt = len(probs)
+                    part = 1 / (self.processes_amount - 1)
+                    for dest_proc in range(1, self.processes_amount):
+                        message_list = probs[
+                                       int((dest_proc - 1) * probs_amnt * part): int(dest_proc * probs_amnt * part)]
+                        message = sm.Message2(sender=proc_id,
+                                              dest=dest_proc,
+                                              mes_type="subproblems",
+                                              payload=message_list,
+                                              timestamp=self.timers[proc_id])
+                        state, outputs, time = self.communicators[proc_id].send(
+                            receiver=dest_proc,
+                            message=message,
+                            ms=self.mes_service
+                        )
                         is_sent = is_sent and (state == 'sent')
-                        self.save_time(proc_id=proc_id, timestamp=time, message=message, dest_proc=dest_proc)
-            elif len(messages_to_send[1]) != 1:
-                raise Exception('Unexpected arguments are passes to send function')
-        elif len(messages_to_send[1]) == len(messages_to_send[0]):
-            probs = self.solvers[proc_id].getSubproblems(np.sum(messages_to_send[1]))
-            for com_id in messages_to_send[0]:
-                list_to_put = []
-                for dest_proc in range(messages_to_send[1][com_id]):
-                    list_to_put.append(probs.pop())
-                message = [list_to_put, self.solvers[proc_id].getRecord(), self.timers[proc_id]]
-                state, outputs, time = self.communicators[proc_id].send(com_id, message, self.mes_service)
-                is_sent = is_sent and (state == 'sent')
-                self.save_time(proc_id=proc_id, timestamp=time, message=message, dest_proc=com_id)
-            if len(probs) > 0:
-                self.solvers[0].putSubproblems(probs)
-        elif len(messages_to_send[1]) >= 1 and messages_to_send[1][0] == -1 and len(messages_to_send[0]) >= 1:
-            probs = self.solvers[-1].getSubproblems(-1)
-            probs_amnt = len(probs)
-            part = 1 / len(messages_to_send[0])
-            for dest_proc in messages_to_send[0]:
-                message = [probs[int((dest_proc - 1) * probs_amnt * part): int(dest_proc * probs_amnt * part)],
-                           self.solvers[proc_id].getRecord(), self.timers[proc_id]]
-                state, outputs, time = self.communicators[proc_id].send(dest_proc, message, self.mes_service)
-                is_sent = is_sent and (state == 'sent')
-                self.save_time(proc_id=proc_id, timestamp=time, message=message, dest_proc=dest_proc)
+                        self.save_time(proc_id=proc_id, timestamp=time, dest_proc=dest_proc)
+                elif len(messages_to_send[1]) == 1:
+                    send_amount = messages_to_send[1][0]
+                    for dest_proc in range(1, self.processes_amount):
+                        probs_to_send = self.solvers[proc_id].getSubproblems(send_amount)
+                        if len(probs_to_send) == 0 and dest_proc == 1:
+                            raise Exception('There is nothing to send')
+                        elif len(probs_to_send) == 0:
+                            break
+                        else:
+                            message_list = probs_to_send
+                            message = sm.Message2(sender=proc_id,
+                                                  dest=dest_proc,
+                                                  mes_type="subproblems",
+                                                  payload=message_list,
+                                                  timestamp=self.timers[proc_id])
+                            state, outputs, time = self.communicators[proc_id].send(
+                                receiver=dest_proc,
+                                message=message,
+                                ms=self.mes_service
+                            )
+                            is_sent = is_sent and (state == 'sent')
+                            self.save_time(proc_id=proc_id, timestamp=time, dest_proc=dest_proc)
+                elif len(messages_to_send[1]) != 1:
+                    raise Exception('Unexpected arguments are passes to send function')
+            elif len(messages_to_send[1]) == len(messages_to_send[0]):
+                probs = self.solvers[proc_id].getSubproblems(np.sum(messages_to_send[1]))
+                for com_id in messages_to_send[0]:
+                    list_to_put = []
+                    for dest_proc in range(messages_to_send[1][com_id]):
+                        list_to_put.append(probs.pop())
+                    message_list = list_to_put
+                    message = sm.Message2(sender=proc_id,
+                                          dest=com_id,
+                                          mes_type="subproblems",
+                                          payload=message_list,
+                                          timestamp=self.timers[proc_id])
+                    state, outputs, time = self.communicators[proc_id].send(
+                        receiver=com_id,
+                        message=message,
+                        ms=self.mes_service
+                    )
+                    is_sent = is_sent and (state == 'sent')
+                    self.save_time(proc_id=proc_id, timestamp=time, dest_proc=com_id)
+                if len(probs) > 0:
+                    self.solvers[0].putSubproblems(probs)
+            elif len(messages_to_send[1]) >= 1 and messages_to_send[1][0] == -1 and len(messages_to_send[0]) >= 1:
+                probs = self.solvers[-1].getSubproblems(-1)
+                probs_amnt = len(probs)
+                part = 1 / len(messages_to_send[0])
+                for dest_proc in messages_to_send[0]:
+                    message_list = probs[int((dest_proc - 1) * probs_amnt * part): int(dest_proc * probs_amnt * part)]
+                    message = sm.Message2(sender=proc_id,
+                                          dest=dest_proc,
+                                          mes_type="subproblems",
+                                          payload=message_list,
+                                          timestamp=self.timers[proc_id])
+                    state, outputs, time = self.communicators[proc_id].send(
+                        receiver=dest_proc,
+                        message=message,
+                        ms=self.mes_service
+                    )
+                    is_sent = is_sent and (state == 'sent')
+                    self.save_time(proc_id=proc_id, timestamp=time, dest_proc=dest_proc)
+
         if not is_sent:
             raise Exception('Sending went wrong')
         else:
@@ -240,17 +335,17 @@ class Engine:
 
         command, outputs = self.balance(proc_id, state)
         return command, outputs
-    
-    def save_time(self, proc_id, timestamp, message, dest_proc):
+
+    def save_time(self, proc_id, timestamp, dest_proc):
         self.route_collector.write(proc_id,
                                    str(round(self.timers[proc_id], 3)) + '-' + str(
                                        round(self.timers[proc_id] + timestamp, 3)),
                                    'Send',
-                                   'dest=' + str(dest_proc) + ',mess_len=' + str(len(message)))
+                                   'dest=' + str(dest_proc))
         self.timers[proc_id] += timestamp
 
 
 if __name__ == "__main__":
-    proc_am = [10, 50, 100, 200, 500, 1000]
-    eng = Engine(5, 30)
+    # proc_am = [10, 50, 100, 200, 500, 1000]
+    eng = Engine(3, 6)
     eng.run()
