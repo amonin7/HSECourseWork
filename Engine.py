@@ -39,6 +39,7 @@ class Engine:
         self.isDoneStatuses = []
         self.state = []
 
+    ### TODO: вынести в отдельный метод вне ENGINE
     def initializeAll(self) -> None:
         master = sb.MasterBalancer("start", max_depth=self.max_depth,
                                    proc_am=self.processes_amount,
@@ -347,5 +348,5 @@ class Engine:
 
 if __name__ == "__main__":
     # proc_am = [10, 50, 100, 200, 500, 1000]
-    eng = Engine(3, 6)
+    eng = Engine(proc_amount=3, max_depth=6)
     eng.run()
