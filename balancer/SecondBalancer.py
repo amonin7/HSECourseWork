@@ -28,8 +28,10 @@ class MasterBalancer(sb.SimpleBalancer):
             self.state = "receive"
             return "receive", [], self.prc_blnc
         if state == "received_get_request":
-            if isinstance(add_args, list) and len(add_args) == 2:
-                get_amount, sender = add_args[0], add_args[1]
+            if isinstance(add_args, list) and len(add_args) == 3\
+                    and isinstance(add_args[0], list) and len(add_args[0]) == 2:
+                info = add_args[0]
+                get_amount, sender = info[0], info[1]
                 if subs_amount == 0:
                     self.alive_proc_am -= 1
                     return "send_exit", [sender], self.prc_blnc
@@ -50,7 +52,17 @@ class SlaveBalancer(sb.SimpleBalancer):
         if self.state == "starting" or self.state == "receiving" or self.state == "sent_get_request":
             return "receive", [], self.prc_blnc
         elif self.state == "nothing_to_receive":
-            return "send_get_request", [0, 1], self.prc_blnc
+            if isinstance(add_args, list) and len(add_args) == 3\
+                    and isinstance(add_args[1], list) and isinstance(add_args[2], int):
+                proc_ind = add_args[2]
+                isSentGR = add_args[1][proc_ind]
+                print("222 " + str(isSentGR))
+                if not isSentGR:
+                    add_args[1][proc_ind] = True
+                    return "send_get_request", [0, 1], self.prc_blnc
+                else:
+                    self.state = "receive"
+                    return "receive", [], self.prc_blnc
         elif self.state == "solved":
             self.state = "receive"
             return "receive", [], self.prc_blnc
@@ -63,4 +75,9 @@ class SlaveBalancer(sb.SimpleBalancer):
         elif state == "got_exit_command":
             return "exit", [], self.prc_blnc
         elif state == "received_put_subs_and_rec":
+            if isinstance(add_args, list) and len(add_args) == 3\
+                    and isinstance(add_args[1], list) and isinstance(add_args[2], int):
+                proc_ind = add_args[2]
+                print("111")
+                add_args[1][proc_ind] = False
             return "solve", [-1], self.prc_blnc

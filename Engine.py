@@ -7,6 +7,7 @@ import messages.MessageService as ms
 import messages.SimpleMessage as sm
 import numpy as np
 import route.RouteCollector as rc
+import route.CommunicationCollector as cc
 
 
 class Engine:
@@ -14,12 +15,12 @@ class Engine:
     def __init__(self,
                  proc_amount,
                  max_depth,
-                 price_receive=1e-2,
-                 price_send=1e-2,
-                 price_put=1e-2,
-                 price_get=1e-3,
+                 price_receive=1e-1,
+                 price_send=1e-1,
+                 price_put=1e-1,
+                 price_get=1e-1,
                  price_balance=1.0,
-                 price_solve=10.0):
+                 price_solve=3.0):
         self.processes_amount = proc_amount  # amount of simulated processes
         self.max_depth = max_depth  # max depth of solving tree
         self.price_rcv = price_receive  # price of receiving message
@@ -31,15 +32,17 @@ class Engine:
 
         self.mes_service = ms.MessageService()
         self.route_collector = rc.RouteCollector('Trace.csv', self.processes_amount)
+        self.comm_collector = cc.CommunicationCollector('Communication.csv')
         self.balancers = []
         self.solvers = []
         self.communicators = []
         self.timers = []
         self.downtime = []  # amount of time when process was without any tasks
         self.isDoneStatuses = []
+        self.isSentRequest = []
         self.state = []
 
-    ### TODO: вынести в отдельный метод вне ENGINE
+    # TODO: вынести в отдельный метод вне ENGINE
     def initializeAll(self) -> None:
         master = sb.MasterBalancer("start", max_depth=self.max_depth,
                                    proc_am=self.processes_amount,
@@ -60,6 +63,7 @@ class Engine:
         self.timers = [0.0] * self.processes_amount
         self.downtime = [0.0] * self.processes_amount
         self.isDoneStatuses = [False] * self.processes_amount
+        self.isSentRequest = [False] * self.processes_amount
         self.state = ["starting"] * self.processes_amount
 
         for i in range(1, self.processes_amount):
@@ -90,7 +94,7 @@ class Engine:
                     command, outputs = self.balance(proc_ind,
                                                     state=receive_status,
                                                     subs_amount=self.solvers[proc_ind].get_sub_amount(),
-                                                    add_args=outputs)
+                                                    add_args=[outputs, self.isSentRequest, proc_ind])
                     if command == "send_subs":
                         self.state[proc_ind] = self.send_subs(proc_id=proc_ind, subs_am=outputs[1], dest_id=outputs[0])
                     elif command == "send_get_request":
@@ -122,6 +126,7 @@ class Engine:
                 proc_ind = (proc_ind + 1) % self.processes_amount
 
         self.route_collector.save()
+        self.comm_collector.save()
 
     def start(self, proc_id, state):
         rcv_output = self.receive_message(proc_id=proc_id)
@@ -151,7 +156,7 @@ class Engine:
                                            'Receive',
                                            message.mes_type)
                 self.timers[proc_id] += time_for_rcv
-
+            self.comm_collector.write_recv(message.sender, proc_id, message.timestamp, self.timers[proc_id])
             if message.mes_type == "get_request":
                 return "received_get_request", [message.payload, message.sender]
             elif message.mes_type == "subproblems":
@@ -202,6 +207,7 @@ class Engine:
         )
         if state != "sent":
             raise Exception('Sending went wrong')
+        # self.isSentRequest[sender_proc_id] = True
         self.save_time(proc_id=sender_proc_id, timestamp=time, dest_proc=dest_proc_id)
         # command, outputs = self.balance(sender_proc_id, state)
         return "sent_get_request"
@@ -348,5 +354,5 @@ class Engine:
 
 if __name__ == "__main__":
     # proc_am = [10, 50, 100, 200, 500, 1000]
-    eng = Engine(proc_amount=3, max_depth=6)
+    eng = Engine(proc_amount=5, max_depth=20)
     eng.run()

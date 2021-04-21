@@ -12,16 +12,12 @@ print("Halo, World!")
 
 # lst = [1, 2, 3, 4, 5]
 
-# secondList = lst[:3]
+pair = (1, 2)
+print(pair[1])
 
-# for x in secondList: lst.remove(x)
+dct = {pair: 2, (32, 3): 7}
+print(dct[(32, 3)])
 
-balancers_amount = 8
-probs_amnt = 14
-part = 1 / (balancers_amount - 1)
-for i in range(1, balancers_amount):
-    print([int((i - 1) * probs_amnt * part), int(i * probs_amnt * part)])
-
-# print(secondList)
-# print(lst)
-
+a1 = 3.2
+a2 = 4.6
+print(f'{a1}:{a2}')
