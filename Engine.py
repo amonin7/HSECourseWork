@@ -1,4 +1,5 @@
-import balancer.SecondBalancer as sb
+import balancer.ThirdBalancer as sb
+# import balancer.SecondBalancer as sb
 # import balancer.SimpleBalancer as sb
 import subproblems.SimpleSubproblem as sp
 import solver.SimpleSolver as slv
@@ -47,7 +48,11 @@ class Engine:
         master = sb.MasterBalancer("start", max_depth=self.max_depth,
                                    proc_am=self.processes_amount,
                                    prc_blnc=self.price_blc,
-                                   alive_proc_am=self.processes_amount - 1)
+                                   alive_proc_am=self.processes_amount - 1,
+                                   T=self.max_depth,
+                                   S=self.max_depth // 2,
+                                   m=100,
+                                   M=1000)
         self.balancers = [master]
         self.solvers = [slv.SimpleSolver(subproblems=[sp.SimpleSubProblem(0, 0, 0)],
                                          records=0,
@@ -68,7 +73,11 @@ class Engine:
 
         for i in range(1, self.processes_amount):
             slave = sb.SlaveBalancer("start", max_depth=self.max_depth, proc_am=self.processes_amount,
-                                     prc_blnc=self.price_blc)
+                                     prc_blnc=self.price_blc,
+                                     T=self.max_depth,
+                                     S=self.max_depth // 2,
+                                     m=100,
+                                     M=1000)
             self.balancers.append(slave)
 
             solver = slv.SimpleSolver(subproblems=[], records=0, is_record_updated=False, max_depth=self.max_depth,
@@ -87,7 +96,8 @@ class Engine:
             state = self.state[proc_ind]
             command, outputs = self.balance(proc_ind,
                                             state=state,
-                                            subs_amount=self.solvers[proc_ind].get_sub_amount())
+                                            subs_amount=self.solvers[proc_ind].get_sub_amount(),
+                                            add_args=[[], self.isSentRequest, proc_ind])
             if command == "start" or command == "receive":
                 receive_status, outputs = self.receive_message(proc_id=proc_ind)
                 if receive_status != "received_exit_command":
@@ -108,6 +118,14 @@ class Engine:
                         self.state[proc_ind] = self.solve(proc_id=proc_ind, tasks_amount=tasks_am)
                 else:
                     self.isDoneStatuses[proc_ind] = True
+            elif command == "send_subs":
+                self.state[proc_ind] = self.send_subs(proc_id=proc_ind, subs_am=outputs[1], dest_id=outputs[0])
+            elif command == "send_get_request":
+                self.state[proc_ind] = self.send_get_request(dest_proc_id=outputs[0],
+                                                             sender_proc_id=proc_ind,
+                                                             tasks_amount=outputs[1])
+            elif command == "send_exit":
+                self.state[proc_ind] = self.send_exit(proc_id=proc_ind, dest_id=outputs[0])
             elif command == "solve":
                 tasks_am = outputs[0]
                 state = self.solve(proc_id=proc_ind, tasks_amount=tasks_am)
@@ -354,5 +372,5 @@ class Engine:
 
 if __name__ == "__main__":
     # proc_am = [10, 50, 100, 200, 500, 1000]
-    eng = Engine(proc_amount=5, max_depth=20)
+    eng = Engine(proc_amount=3, max_depth=9)
     eng.run()
