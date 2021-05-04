@@ -13,5 +13,4 @@ class CommunicationCollector:
 
     def save(self):
         df = pd.DataFrame.from_dict(self.frame, orient='index').transpose()
-        print(df)
         df.to_csv(self.filename)

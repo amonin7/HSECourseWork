@@ -56,7 +56,6 @@ class SlaveBalancer(sb.SimpleBalancer):
                     and isinstance(add_args[1], list) and isinstance(add_args[2], int):
                 proc_ind = add_args[2]
                 isSentGR = add_args[1][proc_ind]
-                print("222 " + str(isSentGR))
                 if not isSentGR:
                     add_args[1][proc_ind] = True
                     return "send_get_request", [0, 1], self.prc_blnc
@@ -78,6 +77,5 @@ class SlaveBalancer(sb.SimpleBalancer):
             if isinstance(add_args, list) and len(add_args) == 3\
                     and isinstance(add_args[1], list) and isinstance(add_args[2], int):
                 proc_ind = add_args[2]
-                print("111")
                 add_args[1][proc_ind] = False
             return "solve", [-1], self.prc_blnc

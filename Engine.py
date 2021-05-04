@@ -16,11 +16,11 @@ class Engine:
     def __init__(self,
                  proc_amount,
                  max_depth,
-                 price_receive=1e-1,
-                 price_send=1e-1,
-                 price_put=1e-1,
-                 price_get=1e-1,
-                 price_balance=1.0,
+                 price_receive=0.05,
+                 price_send=0.05,
+                 price_put=0.05,
+                 price_get=0.05,
+                 price_balance=0.3,
                  price_solve=3.0):
         self.processes_amount = proc_amount  # amount of simulated processes
         self.max_depth = max_depth  # max depth of solving tree
@@ -48,11 +48,13 @@ class Engine:
         master = sb.MasterBalancer("start", max_depth=self.max_depth,
                                    proc_am=self.processes_amount,
                                    prc_blnc=self.price_blc,
-                                   alive_proc_am=self.processes_amount - 1,
+                                   alive_proc_am=self.processes_amount - 1
+                                   ,
                                    T=self.max_depth,
                                    S=self.max_depth // 2,
                                    m=100,
-                                   M=1000)
+                                   M=1000
+                                   )
         self.balancers = [master]
         self.solvers = [slv.SimpleSolver(subproblems=[sp.SimpleSubProblem(0, 0, 0)],
                                          records=0,
@@ -73,11 +75,13 @@ class Engine:
 
         for i in range(1, self.processes_amount):
             slave = sb.SlaveBalancer("start", max_depth=self.max_depth, proc_am=self.processes_amount,
-                                     prc_blnc=self.price_blc,
+                                     prc_blnc=self.price_blc
+                                     ,
                                      T=self.max_depth,
                                      S=self.max_depth // 2,
                                      m=100,
-                                     M=1000)
+                                     M=1000
+                                     )
             self.balancers.append(slave)
 
             solver = slv.SimpleSolver(subproblems=[], records=0, is_record_updated=False, max_depth=self.max_depth,
