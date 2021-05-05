@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-class RouteCollector:
+class TraceCollector:
 
     def __init__(self, filename, proc_am):
         self.filename = filename

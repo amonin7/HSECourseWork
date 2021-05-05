@@ -21,14 +21,11 @@ class MasterBalancer(sb.SimpleBalancer):
             else:
                 self.state = "receive"
                 return "receive", [], self.prc_blnc
-        if state == "nothing_to_receive":
-            self.state = "receive"
-            return "receive", [], self.prc_blnc
-        if state == "received" or state == "received_put_subs_and_rec":
+        if state == "received" or state == "received_put_subs_and_rec" or state == "nothing_to_receive":
             self.state = "receive"
             return "receive", [], self.prc_blnc
         if state == "received_get_request":
-            if isinstance(add_args, list) and len(add_args) == 3\
+            if isinstance(add_args, list) and len(add_args) == 3 \
                     and isinstance(add_args[0], list) and len(add_args[0]) == 2:
                 info = add_args[0]
                 get_amount, sender = info[0], info[1]
@@ -49,10 +46,13 @@ class SlaveBalancer(sb.SimpleBalancer):
 
     def balance(self, state, subs_amount, add_args=None):
         self.state = state
-        if self.state == "starting" or self.state == "receiving" or self.state == "sent_get_request":
+        if self.state == "starting" or \
+                self.state == "sent_get_request" or \
+                self.state == "solved" or \
+                self.state == "sent":
             return "receive", [], self.prc_blnc
         elif self.state == "nothing_to_receive":
-            if isinstance(add_args, list) and len(add_args) == 3\
+            if isinstance(add_args, list) and len(add_args) == 3 \
                     and isinstance(add_args[1], list) and isinstance(add_args[2], int):
                 proc_ind = add_args[2]
                 isSentGR = add_args[1][proc_ind]
@@ -62,19 +62,12 @@ class SlaveBalancer(sb.SimpleBalancer):
                 else:
                     self.state = "receive"
                     return "receive", [], self.prc_blnc
-        elif self.state == "solved":
-            self.state = "receive"
-            return "receive", [], self.prc_blnc
-        elif self.state == "sent":
-            self.state = "receive"
-            return "receive", [], self.prc_blnc
-        elif state == "received":
-            self.state = "received"
+        elif self.state == "received":
             return "solve", [-1], self.prc_blnc
-        elif state == "got_exit_command":
+        elif self.state == "got_exit_command":
             return "exit", [], self.prc_blnc
-        elif state == "received_put_subs_and_rec":
-            if isinstance(add_args, list) and len(add_args) == 3\
+        elif self.state == "received_put_subs_and_rec":
+            if isinstance(add_args, list) and len(add_args) == 3 \
                     and isinstance(add_args[1], list) and isinstance(add_args[2], int):
                 proc_ind = add_args[2]
                 add_args[1][proc_ind] = False

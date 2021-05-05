@@ -52,7 +52,7 @@ class SlaveBalancer(sb.SimpleBalancer):
 
     def balance(self, state, subs_amount, add_args=None):
         self.state = state
-        if self.state == "starting" or self.state == "receiving" or self.state == "sent_get_request":
+        if self.state == "starting" or self.state == "sent_get_request" or self.state == "sent":
             return "receive", [], self.prc_blnc
         elif self.state == "nothing_to_receive":
             if isinstance(add_args, list) and len(add_args) == 3\
@@ -88,9 +88,6 @@ class SlaveBalancer(sb.SimpleBalancer):
                     else:
                         self.state = "receive"
                         return "receive", [], self.prc_blnc
-        elif self.state == "sent":
-            self.state = "receive"
-            return "receive", [], self.prc_blnc
         elif state == "got_exit_command":
             return "exit", [], self.prc_blnc
 

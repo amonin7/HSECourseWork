@@ -57,7 +57,7 @@ class SimpleSolver:
 
     # непосредственное ветвление одной вершины
     def ramify(self):
-        curSubProblem = self.subproblems.pop()
+        curSubProblem = self.subproblems.pop(0)
         if self.generateContinueOrNot(curSubProblem) == 1:
             self.subproblems.append(subprob.SimpleSubProblem(depth=curSubProblem.depth + 1, weight=0, cost=0))
             self.subproblems.append(subprob.SimpleSubProblem(depth=curSubProblem.depth + 1, weight=0, cost=0))

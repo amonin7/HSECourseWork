@@ -7,7 +7,7 @@ import communicator.SimpleCommunicator as com
 import messages.MessageService as ms
 import messages.SimpleMessage as sm
 import numpy as np
-import route.RouteCollector as rc
+import route.TraceCollector as rc
 import route.CommunicationCollector as cc
 
 
@@ -32,7 +32,7 @@ class Engine:
         self.price_slv = price_solve  # price of solving
 
         self.mes_service = ms.MessageService()
-        self.route_collector = rc.RouteCollector('Trace.csv', self.processes_amount)
+        self.route_collector = rc.TraceCollector('Trace.csv', self.processes_amount)
         self.comm_collector = cc.CommunicationCollector('Communication.csv')
         self.balancers = []
         self.solvers = []
@@ -360,7 +360,7 @@ class Engine:
         if not is_sent:
             raise Exception('Sending went wrong')
         else:
-            state = "sent"
+            "sent"
 
         command, outputs = self.balance(proc_id, state)
         return command, outputs
