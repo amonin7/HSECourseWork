@@ -1,6 +1,6 @@
-import balancer.ThirdBalancer as sb
+# import balancer.ThirdBalancer as sb
 # import balancer.SecondBalancer as sb
-# import balancer.SimpleBalancer as sb
+import balancer.SimpleBalancer as sb
 import subproblems.SimpleSubproblem as sp
 import solver.SimpleSolver as slv
 import communicator.SimpleCommunicator as com
@@ -47,13 +47,14 @@ class Engine:
     def initializeAll(self) -> None:
         master = sb.MasterBalancer("start", max_depth=self.max_depth,
                                    proc_am=self.processes_amount,
-                                   prc_blnc=self.price_blc,
-                                   alive_proc_am=self.processes_amount - 1
-                                   ,
-                                   T=self.max_depth,
-                                   S=self.max_depth // 2,
-                                   m=100,
-                                   M=1000
+                                   prc_blnc=self.price_blc
+                                   # ,
+                                   # alive_proc_am=self.processes_amount - 1
+                                   # ,
+                                   # T=self.max_depth,
+                                   # S=self.max_depth // 2,
+                                   # m=100,
+                                   # M=1000
                                    )
         self.balancers = [master]
         self.solvers = [slv.SimpleSolver(subproblems=[sp.SimpleSubProblem(0, 0, 0)],
@@ -76,11 +77,11 @@ class Engine:
         for i in range(1, self.processes_amount):
             slave = sb.SlaveBalancer("start", max_depth=self.max_depth, proc_am=self.processes_amount,
                                      prc_blnc=self.price_blc
-                                     ,
-                                     T=self.max_depth,
-                                     S=self.max_depth // 2,
-                                     m=100,
-                                     M=1000
+                                     # ,
+                                     # T=self.max_depth,
+                                     # S=self.max_depth // 2,
+                                     # m=100,
+                                     # M=1000
                                      )
             self.balancers.append(slave)
 
@@ -96,7 +97,7 @@ class Engine:
     def run(self) -> None:
         self.initializeAll()
         proc_ind = 0
-        while not self.isDoneStatuses[0]:
+        while True:
             state = self.state[proc_ind]
             command, outputs = self.balance(proc_ind,
                                             state=state,
@@ -124,6 +125,8 @@ class Engine:
                     self.isDoneStatuses[proc_ind] = True
             elif command == "send_subs":
                 self.state[proc_ind] = self.send_subs(proc_id=proc_ind, subs_am=outputs[1], dest_id=outputs[0])
+            elif command == "send_all":
+                self.state[proc_ind] = self.send_all_subs_to_all_proc(proc_id=proc_ind)
             elif command == "send_get_request":
                 self.state[proc_ind] = self.send_get_request(dest_proc_id=outputs[0],
                                                              sender_proc_id=proc_ind,
@@ -136,7 +139,7 @@ class Engine:
                 self.state[proc_ind] = state
             elif command == "exit":
                 self.isDoneStatuses[proc_ind] = True
-                break
+                # break
 
             # TODO: добавить в метод balance параметром состояние солвера (эм_таскс + рекорд)
 
@@ -144,8 +147,14 @@ class Engine:
             # if command == "stop" and self.solvers[proc_ind].compareRecord(optimal_value):
             #     optimal_value = self.solvers[proc_ind].getRecord()
             proc_ind = (proc_ind + 1) % self.processes_amount
+            i = 0
             while self.isDoneStatuses[proc_ind]:
+                i += 1
+                if i > self.processes_amount + 1:
+                    break
                 proc_ind = (proc_ind + 1) % self.processes_amount
+            if i > self.processes_amount + 1:
+                break
 
         self.route_collector.save()
         self.comm_collector.save()
@@ -265,6 +274,26 @@ class Engine:
         self.save_time(proc_id=proc_id, timestamp=time, dest_proc=proc_id)
         return "sent_exit"
 
+    def send_all_subs_to_all_proc(self, proc_id):
+        probs = self.solvers[proc_id].getSubproblems(-1)
+        probs_amnt = len(probs)
+        part = 1 / (self.processes_amount - 1)
+        for dest_proc in range(1, self.processes_amount):
+            message_list = probs[
+                           int((dest_proc - 1) * probs_amnt * part): int(dest_proc * probs_amnt * part)]
+            message = sm.Message2(sender=proc_id,
+                                  dest=dest_proc,
+                                  mes_type="subproblems",
+                                  payload=message_list,
+                                  timestamp=self.timers[proc_id])
+            state, outputs, time = self.communicators[proc_id].send(
+                receiver=dest_proc,
+                message=message,
+                ms=self.mes_service
+            )
+            self.save_time(proc_id=proc_id, timestamp=time, dest_proc=dest_proc)
+        return "sent_subs"
+
     def send(self, proc_id, messages_to_send):
         is_sent = True
         """
@@ -360,7 +389,7 @@ class Engine:
         if not is_sent:
             raise Exception('Sending went wrong')
         else:
-            "sent"
+            state = "sent"
 
         command, outputs = self.balance(proc_id, state)
         return command, outputs

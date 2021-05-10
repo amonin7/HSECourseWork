@@ -32,11 +32,11 @@ class MasterBalancer(SimpleBalancer):
     def balance(self, state, subs_amount, add_args=None):
         self.state = state
         if self.state == "starting":
-            return "solve", [self.proc_am], self.prc_blnc
+            return "solve", [self.proc_am * 6], self.prc_blnc
         if self.state == "solved":
-            return "send", [[-1], [-1]], self.prc_blnc
-        if self.state == "sent":
-            return "stop", [], self.prc_blnc
+            return "send_all", [[-1], [-1]], self.prc_blnc
+        if self.state == "sent_subs":
+            return "exit", [], self.prc_blnc
 
 
 class SlaveBalancer(SimpleBalancer):
@@ -46,6 +46,10 @@ class SlaveBalancer(SimpleBalancer):
     def balance(self, state, subs_amount, add_args=None):
         self.state = state
         if self.state == "starting":
+            return "receive", [], self.prc_blnc
+        elif self.state == "received_put_subs_and_rec":
             return "solve", [-1], self.prc_blnc
-        if self.state == "solved":
-            return "stop", [], self.prc_blnc
+        elif self.state == "solved":
+            return "exit", [], self.prc_blnc
+        else:
+            return "bound", [], self.prc_blnc
