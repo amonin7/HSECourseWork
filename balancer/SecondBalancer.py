@@ -3,14 +3,15 @@ import balancer.SimpleBalancer as sb
 
 class MasterBalancer(sb.SimpleBalancer):
 
-    def __init__(self, state, max_depth, proc_am, prc_blnc, alive_proc_am):
+    def __init__(self, state, max_depth, proc_am, prc_blnc, alive_proc_am, arg=5):
         super().__init__(state, max_depth, proc_am, prc_blnc)
         self.alive_proc_am = alive_proc_am
+        self.arg=arg
 
     def balance(self, state, subs_amount, add_args=None):
         if state == "starting":
             self.state = state
-            return "solve", [self.proc_am * 7], self.prc_blnc
+            return "solve", [self.proc_am * self.arg], self.prc_blnc
         if state == "solved":
             self.state = state
             return "receive", [], self.prc_blnc
@@ -41,8 +42,9 @@ class MasterBalancer(sb.SimpleBalancer):
 
 class SlaveBalancer(sb.SimpleBalancer):
 
-    def __init__(self, state, max_depth, proc_am, prc_blnc):
+    def __init__(self, state, max_depth, proc_am, prc_blnc, arg=5):
         super().__init__(state, max_depth, proc_am, prc_blnc)
+        self.arg=arg
 
     def balance(self, state, subs_amount, add_args=None):
         self.state = state

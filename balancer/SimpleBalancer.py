@@ -20,8 +20,9 @@ class SimpleBalancer:
 
 class MasterBalancer(SimpleBalancer):
 
-    def __init__(self, state, max_depth, proc_am, prc_blnc):
+    def __init__(self, state, max_depth, proc_am, prc_blnc, arg=5):
         super().__init__(state, max_depth, proc_am, prc_blnc)
+        self.arg = arg
 
     '''
     :returns status, where to send, how many to send
@@ -29,10 +30,11 @@ class MasterBalancer(SimpleBalancer):
     how many to send -- either list of amounts of tasks to each process to send
     or -1 (means all tasks should be separated into equal groups and send to all processes)
     '''
+
     def balance(self, state, subs_amount, add_args=None):
         self.state = state
         if self.state == "starting":
-            return "solve", [self.proc_am * 6], self.prc_blnc
+            return "solve", [self.proc_am * self.arg], self.prc_blnc
         if self.state == "solved":
             return "send_all", [[-1], [-1]], self.prc_blnc
         if self.state == "sent_subs":
@@ -40,8 +42,9 @@ class MasterBalancer(SimpleBalancer):
 
 
 class SlaveBalancer(SimpleBalancer):
-    def __init__(self, state, max_depth, proc_am, prc_blnc):
+    def __init__(self, state, max_depth, proc_am, prc_blnc, arg=5):
         super().__init__(state, max_depth, proc_am, prc_blnc)
+        self.arg = arg
 
     def balance(self, state, subs_amount, add_args=None):
         self.state = state

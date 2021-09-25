@@ -16,12 +16,14 @@ class Engine:
     def __init__(self,
                  proc_amount,
                  max_depth,
-                 price_receive=0.05,
-                 price_send=0.05,
-                 price_put=0.05,
-                 price_get=0.05,
-                 price_balance=0.3,
-                 price_solve=3.0):
+                 arg=7,
+                 price_receive=0.005,
+                 price_send=0.005,
+                 price_put=0.005,
+                 price_get=0.005,
+                 price_balance=0.05,
+                 price_solve=5.0):
+        self.arg = arg
         self.processes_amount = proc_amount  # amount of simulated processes
         self.max_depth = max_depth  # max depth of solving tree
         self.price_rcv = price_receive  # price of receiving message
@@ -32,8 +34,8 @@ class Engine:
         self.price_slv = price_solve  # price of solving
 
         self.mes_service = ms.MessageService()
-        self.route_collector = rc.TraceCollector('Trace.csv', self.processes_amount)
-        self.comm_collector = cc.CommunicationCollector('Communication.csv')
+        self.route_collector = rc.TraceCollector('Trace33.csv', self.processes_amount)
+        self.comm_collector = cc.CommunicationCollector('Communication33.csv')
         self.balancers = []
         self.solvers = []
         self.communicators = []
@@ -55,6 +57,8 @@ class Engine:
                                    S=self.max_depth // 2,
                                    m=100,
                                    M=1000
+                                   ,
+                                   arg=self.arg
                                    )
         self.balancers = [master]
         self.solvers = [slv.SimpleSolver(subproblems=[sp.SimpleSubProblem(0, 0, 0)],
@@ -84,6 +88,8 @@ class Engine:
                                      S=self.max_depth // 2,
                                      m=100,
                                      M=1000
+                                     ,
+                                     arg=self.arg
                                      )
             self.balancers.append(slave)
 
@@ -163,11 +169,8 @@ class Engine:
 
     def start(self, proc_id, state):
         rcv_output = self.receive_message(proc_id=proc_id)
-        command, outputs = self.balance(proc_id,
-                                        state,
-                                        subs_amount=self.solvers[proc_id].get_sub_amount(),
-                                        add_args=[[], self.isSentRequest, proc_id]
-                                        )
+        command, outputs = self.balance(proc_id, state, subs_amount=self.solvers[proc_id].get_sub_amount(),
+                                        add_args=[[], self.isSentRequest, proc_id])
         return command, outputs
 
     def receive_message(self, proc_id):
@@ -209,7 +212,6 @@ class Engine:
     def solve(self, proc_id, tasks_amount):
         state, _, time = self.solvers[proc_id].solve(tasks_amount)
         if state == "solved":
-            # command = "balance"
             self.route_collector.write(proc_id,
                                        str(round(self.timers[proc_id], 3)) + '-' + str(
                                            round(self.timers[proc_id] + time, 3)),
@@ -220,7 +222,7 @@ class Engine:
             raise Exception('Solving went wrong')
         return state
 
-    def balance(self, proc_id, state, subs_amount, add_args=None):
+    def balance(self, proc_id, state, subs_amount, add_args):
         command, outputs, time = self.balancers[proc_id].balance(state=state,
                                                                  subs_amount=subs_amount,
                                                                  add_args=add_args)
@@ -399,8 +401,7 @@ class Engine:
 
         command, outputs = self.balance(proc_id, state,
                                         subs_amount=self.solvers[proc_id].get_sub_amount(),
-                                        add_args=[[], self.isSentRequest, proc_id]
-                                        )
+                                        add_args=[[], self.isSentRequest, proc_id])
         return command, outputs
 
     def save_time(self, proc_id, timestamp, dest_proc):
@@ -414,5 +415,5 @@ class Engine:
 
 if __name__ == "__main__":
     # proc_am = [10, 50, 100, 200, 500, 1000]
-    eng = Engine(proc_amount=3, max_depth=12)
+    eng = Engine(proc_amount=10, max_depth=50)
     eng.run()

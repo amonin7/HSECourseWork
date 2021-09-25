@@ -2,18 +2,19 @@ import balancer.SimpleBalancer as sb
 
 
 class MasterBalancer(sb.SimpleBalancer):
-    def __init__(self, state, max_depth, proc_am, prc_blnc, alive_proc_am, T, S, m, M):
+    def __init__(self, state, max_depth, proc_am, prc_blnc, alive_proc_am, T, S, m, M, arg=5):
         super().__init__(state, max_depth, proc_am, prc_blnc)
         self.alive_proc_am = alive_proc_am
         self.T = T
         self.S = S
         self.M = M
         self.m = m
+        self.arg=arg
 
-    def balance(self, state, subs_amount, add_args=None):
+    def balance(self, state, subs_amount, add_args):
         self.state = state
         if state == "starting":
-            return "solve", [self.proc_am * 2], self.prc_blnc
+            return "solve", [self.proc_am * self.arg], self.prc_blnc
         elif state == "solved" or state == "nothing_to_receive":
             return "receive", [], self.prc_blnc
         elif state == "received_get_request":
@@ -43,14 +44,16 @@ class MasterBalancer(sb.SimpleBalancer):
 
 class SlaveBalancer(sb.SimpleBalancer):
 
-    def __init__(self, state, max_depth, proc_am, prc_blnc, T, S, m, M):
+    def __init__(self, state, max_depth, proc_am, prc_blnc, alive_proc_am, T, S, m, M, arg=5):
         super().__init__(state, max_depth, proc_am, prc_blnc)
+        self.alive_proc_am = alive_proc_am
         self.T = T
         self.S = S
         self.M = M
         self.m = m
+        self.arg=arg
 
-    def balance(self, state, subs_amount, add_args=None):
+    def balance(self, state, subs_amount, add_args):
         self.state = state
         if self.state == "starting" or self.state == "sent_get_request" or self.state == "sent":
             return "receive", [], self.prc_blnc
@@ -71,7 +74,7 @@ class SlaveBalancer(sb.SimpleBalancer):
                 proc_ind = add_args[2]
                 add_args[1][proc_ind] = False
             return "solve", [self.T], self.prc_blnc
-        elif self.state == "solved":
+        elif self.state == "solved" or self.state == 'sent_subs':
             if subs_amount > 0:
                 if subs_amount > self.S:
                     return "send_subs", [0, self.S], self.prc_blnc

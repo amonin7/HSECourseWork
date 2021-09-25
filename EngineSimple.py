@@ -1,6 +1,6 @@
-import balancer.ThirdBalancer as sb
+# import balancer.ThirdBalancer as sb
 # import balancer.SecondBalancer as sb
-# import balancer.SimpleBalancer as sb
+import balancer.SimpleBalancer as sb
 import subproblems.SimpleSubproblem as sp
 import solver.SimpleSolver as slv
 import communicator.SimpleCommunicator as com
@@ -16,12 +16,14 @@ class Engine:
     def __init__(self,
                  proc_amount,
                  max_depth,
-                 price_receive=0.05,
-                 price_send=0.05,
-                 price_put=0.05,
-                 price_get=0.05,
-                 price_balance=0.3,
-                 price_solve=3.0):
+                 arg=7,
+                 price_receive=0.005,
+                 price_send=0.005,
+                 price_put=0.005,
+                 price_get=0.005,
+                 price_balance=0.05,
+                 price_solve=5.0):
+        self.arg = arg
         self.processes_amount = proc_amount  # amount of simulated processes
         self.max_depth = max_depth  # max depth of solving tree
         self.price_rcv = price_receive  # price of receiving message
@@ -32,8 +34,8 @@ class Engine:
         self.price_slv = price_solve  # price of solving
 
         self.mes_service = ms.MessageService()
-        self.route_collector = rc.TraceCollector('Trace.csv', self.processes_amount)
-        self.comm_collector = cc.CommunicationCollector('Communication.csv')
+        self.route_collector = rc.TraceCollector('Trace1.csv', self.processes_amount)
+        self.comm_collector = cc.CommunicationCollector('Communication1.csv')
         self.balancers = []
         self.solvers = []
         self.communicators = []
@@ -48,13 +50,15 @@ class Engine:
         master = sb.MasterBalancer("start", max_depth=self.max_depth,
                                    proc_am=self.processes_amount,
                                    prc_blnc=self.price_blc
+                                   # ,
+                                   # alive_proc_am=self.processes_amount - 1
+                                   # ,
+                                   # T=self.max_depth,
+                                   # S=self.max_depth // 2,
+                                   # m=100,
+                                   # M=1000
                                    ,
-                                   alive_proc_am=self.processes_amount - 1
-                                   ,
-                                   T=self.max_depth,
-                                   S=self.max_depth // 2,
-                                   m=100,
-                                   M=1000
+                                   arg=self.arg
                                    )
         self.balancers = [master]
         self.solvers = [slv.SimpleSolver(subproblems=[sp.SimpleSubProblem(0, 0, 0)],
@@ -77,13 +81,13 @@ class Engine:
         for i in range(1, self.processes_amount):
             slave = sb.SlaveBalancer("start", max_depth=self.max_depth, proc_am=self.processes_amount,
                                      prc_blnc=self.price_blc
+                                     # ,
+                                     # T=self.max_depth,
+                                     # S=self.max_depth // 2,
+                                     # m=100,
+                                     # M=1000
                                      ,
-                                     alive_proc_am=self.processes_amount - 1
-                                     ,
-                                     T=self.max_depth,
-                                     S=self.max_depth // 2,
-                                     m=100,
-                                     M=1000
+                                     arg=self.arg
                                      )
             self.balancers.append(slave)
 
@@ -166,8 +170,7 @@ class Engine:
         command, outputs = self.balance(proc_id,
                                         state,
                                         subs_amount=self.solvers[proc_id].get_sub_amount(),
-                                        add_args=[[], self.isSentRequest, proc_id]
-                                        )
+                                        add_args=[[], self.isSentRequest, proc_id])
         return command, outputs
 
     def receive_message(self, proc_id):
@@ -399,8 +402,7 @@ class Engine:
 
         command, outputs = self.balance(proc_id, state,
                                         subs_amount=self.solvers[proc_id].get_sub_amount(),
-                                        add_args=[[], self.isSentRequest, proc_id]
-                                        )
+                                        add_args=[[], self.isSentRequest, proc_id])
         return command, outputs
 
     def save_time(self, proc_id, timestamp, dest_proc):
@@ -414,5 +416,5 @@ class Engine:
 
 if __name__ == "__main__":
     # proc_am = [10, 50, 100, 200, 500, 1000]
-    eng = Engine(proc_amount=3, max_depth=12)
+    eng = Engine(proc_amount=3, max_depth=9)
     eng.run()
