@@ -1,6 +1,6 @@
-import balancer.ThirdBalancer as sb
+# import balancer.ThirdBalancer as sb
 # import balancer.SecondBalancer as sb
-# import balancer.SimpleBalancer as sb
+import balancer.SimpleBalancer as sb
 import subproblems.SimpleSubproblem as sp
 import solver.SimpleSolver as slv
 import communicator.SimpleCommunicator as com
@@ -48,13 +48,13 @@ class Engine:
         master = sb.MasterBalancer("start", max_depth=self.max_depth,
                                    proc_am=self.processes_amount,
                                    prc_blnc=self.price_blc
-                                   ,
-                                   alive_proc_am=self.processes_amount - 1
-                                   ,
-                                   T=self.max_depth,
-                                   S=self.max_depth // 2,
-                                   m=100,
-                                   M=1000
+                                   # ,
+                                   # alive_proc_am=self.processes_amount - 1
+                                   # ,
+                                   # T=self.max_depth,
+                                   # S=self.max_depth // 2,
+                                   # m=100,
+                                   # M=1000
                                    )
         self.balancers = [master]
         self.solvers = [slv.SimpleSolver(subproblems=[sp.SimpleSubProblem(0, 0, 0)],
@@ -77,13 +77,13 @@ class Engine:
         for i in range(1, self.processes_amount):
             slave = sb.SlaveBalancer("start", max_depth=self.max_depth, proc_am=self.processes_amount,
                                      prc_blnc=self.price_blc
-                                     ,
-                                     alive_proc_am=self.processes_amount - 1
-                                     ,
-                                     T=self.max_depth,
-                                     S=self.max_depth // 2,
-                                     m=100,
-                                     M=1000
+                                     # ,
+                                     # alive_proc_am=self.processes_amount - 1
+                                     # ,
+                                     # T=self.max_depth,
+                                     # S=self.max_depth // 2,
+                                     # m=100,
+                                     # M=1000
                                      )
             self.balancers.append(slave)
 
@@ -414,5 +414,5 @@ class Engine:
 
 if __name__ == "__main__":
     # proc_am = [10, 50, 100, 200, 500, 1000]
-    eng = Engine(proc_amount=3, max_depth=12)
+    eng = Engine(proc_amount=10, max_depth=20)
     eng.run()

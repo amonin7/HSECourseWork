@@ -12,6 +12,7 @@ class SimpleSolver:
         self.testDict = {1: 0}
         self.prc_put = prc_put
         self.prc_slv = prc_slv
+        # random.seed(42)
 
     def getSubproblems(self, subprobs_amount):
         if subprobs_amount == -1:

@@ -17,12 +17,12 @@ class Engine:
                  proc_amount,
                  max_depth,
                  arg=7,
-                 price_receive=0.005,
-                 price_send=0.005,
-                 price_put=0.005,
-                 price_get=0.005,
-                 price_balance=0.05,
-                 price_solve=5.0):
+                 price_put=0.0,
+                 price_get=0.0,
+                 price_solve=0.0000485,
+                 price_balance=0.0005668,
+                 price_receive=0.0000880,
+                 price_send=0.0000004):
         self.arg = arg
         self.processes_amount = proc_amount  # amount of simulated processes
         self.max_depth = max_depth  # max depth of solving tree
